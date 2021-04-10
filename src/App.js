@@ -144,7 +144,7 @@ const DownloadButton = React.memo(function PrintButton({item}) {
     <button
       onClick={() =>
         downloadBlob(
-          new Blob(item.message),
+          new Blob([new Uint8Array(item.message)]),
           item.name + (item.name.toLowerCase().endsWith('.syx') ? '' : '.syx')
         )
       }
