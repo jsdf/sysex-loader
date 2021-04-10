@@ -40,7 +40,7 @@ function getTimestampString(ts) {
     [
       String(d.getHours()).padStart(2, '0'),
       String(d.getMinutes()).padStart(2, '0'),
-      d.getSeconds(),
+      String(d.getSeconds()).padStart(2, '0'),
     ].join(':')
   );
 }
@@ -237,7 +237,7 @@ function App() {
         </div>
         <div style={{display: 'inline-block', padding: '0 4px'}}>
           <Checkbox
-            label="automatically send dropped files"
+            label="automatically send dropped files to device"
             checked={autoSend}
             onChange={() => setAutoSend((s) => !s)}
           />
