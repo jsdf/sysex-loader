@@ -1,17 +1,35 @@
 .Table {
   width: 100%;
-  background-color: #ccc;
+  background-color: #eee;
   border: none;
   text-align: left;
+
+  word-break: break-all;
 }
 .Table thead th {
-  font-weight: initial;
   padding: 2px 4px;
 }
 
 .Table_odd {
-  background-color: #aaa;
+  background-color: #ccc;
 }
 .Table td {
   padding: 2px 4px;
+}
+
+@media only screen and (max-width: 1024px) {
+  .Table thead {
+    display: none;
+  }
+  .Table,
+  .Table tbody,
+  .Table td,
+  .Table th,
+  .Table tr {
+    display: block;
+    width: 100% !important;
+  }
+  .Table tr {
+    padding: 8px;
+  }
 }

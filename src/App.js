@@ -1,6 +1,7 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState, useMemo} from 'react';
 import {useDropzone} from 'react-dropzone';
 import Modal from 'react-modal';
+
 import './App.css';
 import MidiDeviceSelector from './MidiDeviceSelector';
 import useLocalStorage from './useLocalStorage';
@@ -9,19 +10,42 @@ import Table from './Table';
 import byteArrayToHex from './byteArrayToHex';
 import downloadBlob from './downloadBlob';
 import md5 from './md5';
-import midimanufacturers from './midimanufacturers.json';
 import Checkbox from './Checkbox';
+import uniqueID from './uniqueID';
+import LogView from './LogView';
+import EditableText from './EditableText';
+import {parseSysexMessage, getSysexManufacturer} from './sysex';
+
+function concatTypedArrays(ArrayType, arrays) {
+  let totalLength = 0;
+  for (const arr of arrays) {
+    totalLength += arr.length;
+  }
+  const result = new ArrayType(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
 
 Modal.setAppElement(document.body);
 
-function getSysexManufacturer(data) {
-  if (data[1] === 0x00) {
-    return midimanufacturers[byteArrayToHex(data.slice(1, 4)).toLowerCase()];
-  } else {
-    return midimanufacturers[byteArrayToHex(data.slice(1, 2)).toLowerCase()];
+function splitToSysExMessages(data) {
+  let pos = 0;
+  let lastPos = 0;
+  let parts = [];
+  while ((pos = data.indexOf(0xf7, lastPos)) !== -1) {
+    pos += 1; // include the end byte
+    parts.push(data.slice(lastPos, pos));
+    lastPos = pos;
   }
+
+  return parts;
 }
 
+// can be saved to localstorage so we can reacquire the same port by id next time
 class MidiPortReference {
   constructor(id, port) {
     this.id = id;
@@ -46,17 +70,20 @@ function getTimestampString(ts) {
 }
 
 function makeItem({message, name}) {
+  const messages = splitToSysExMessages(message);
   return {
     message,
     name,
+    type: parseSysexMessage(messages[0])?.type,
     timestamp: Date.now(),
     hash: md5(byteArrayToHex(message)),
+    messagesCount: splitToSysExMessages(message).length,
   };
 }
 
 function formatBytesForDisplay(str, lineLength) {
   let out = '';
-  for (let i = 0; i < Math.ceil(str.length / (lineLength / 2)); i++) {
+  for (let i = 0; i < Math.ceil(str.length / (lineLength * 2)); i++) {
     const line = str.slice(i * lineLength * 2, (i + 1) * lineLength * 2);
     for (let k = 0; k < Math.ceil(line.length / 2); k++) {
       out += line.slice(k * 2, (k + 1) * 2) + ' ';
@@ -66,7 +93,14 @@ function formatBytesForDisplay(str, lineLength) {
   return out;
 }
 
-function FileDropzone({onFile, onStatus}) {
+function downloadItem(item) {
+  downloadBlob(
+    new Blob([new Uint8Array(item.message)]),
+    item.name + (item.name.toLowerCase().endsWith('.syx') ? '' : '.syx')
+  );
+}
+
+function FileDropzone({onFile, onStatus, className, autoSend}) {
   const onDrop = useCallback(
     (acceptedFiles) => {
       acceptedFiles.forEach((file) => {
@@ -87,27 +121,27 @@ function FileDropzone({onFile, onStatus}) {
     [onFile, onStatus]
   );
   const {getRootProps, getInputProps} = useDropzone({onDrop});
+  const inputProps = getInputProps();
 
   return (
     <div
+      className={className}
+      {...getRootProps()}
       style={{
-        margin: '0 auto',
         textAlign: 'center',
+        border: 'dashed 3px #ccc',
+        borderRadius: 30,
+        cursor: 'pointer',
       }}
     >
-      <div
-        {...getRootProps()}
-        style={{
-          border: 'dashed 3px #ccc',
-          borderRadius: 30,
-          height: 300,
-          margin: '16px',
-          cursor: 'pointer',
-        }}
-      >
-        <input {...getInputProps()} />
-        <p>Drag 'n' drop some .syx files here, or click to select files</p>
+      <div style={{margin: '32px auto', fontSize: 24, maxWidth: 360}}>
+        Drag & drop some .syx files here (or click here to select files) to{' '}
+        {autoSend ? 'send them to your device' : 'add them to the library'}.
       </div>
+      <input
+        {...inputProps}
+        style={{...inputProps.style, display: 'block', margin: '32px auto'}}
+      />
     </div>
   );
 }
@@ -116,23 +150,58 @@ function uniqueBy(values, getKey) {
   return Array.from(new Map(values.map((v) => [getKey(v), v])).values());
 }
 
-const SendButton = React.memo(function SendButton({item, sendMidi}) {
-  return <button onClick={() => sendMidi(item.message)}>send</button>;
+const SendButton = React.memo(function SendButton({item, sendItem}) {
+  return <button onClick={() => sendItem(item)}>send</button>;
+});
+const ItemName = React.memo(function ItemName({item, updateItem}) {
+  return (
+    <EditableText
+      value={item.name}
+      onChange={useCallback(
+        (updatedName) => updateItem({...item, name: updatedName}),
+        [updateItem, item]
+      )}
+    />
+  );
 });
 
-const ViewButton = React.memo(function ViewButton({item, setModalContent}) {
+const InfoButton = React.memo(function InfoButton({item, setModalContent}) {
   return (
     <button
       onClick={() =>
         setModalContent({
           title: item.name,
           body: (
-            <pre>{formatBytesForDisplay(byteArrayToHex(item.message), 16)}</pre>
+            <div style={{marginTop: 16}}>
+              <div>Manufacturer: {getSysexManufacturer(item.message)}</div>
+              <div>Messages: {item.messagesCount}</div>
+
+              <h3>Data</h3>
+
+              {splitToSysExMessages(item.message).map((message, i) => {
+                const parsed = parseSysexMessage(message);
+                return (
+                  <React.Fragment key={i}>
+                    <h4>Message {i + 1}</h4>
+                    {parsed && (
+                      <>
+                        <div>Parsed:</div>
+                        <pre>{JSON.stringify(parsed, null, 2)}</pre>
+                      </>
+                    )}
+                    <div>Bytes:</div>
+                    <pre>
+                      {formatBytesForDisplay(byteArrayToHex(message), 16)}
+                    </pre>
+                  </React.Fragment>
+                );
+              })}
+            </div>
           ),
         })
       }
     >
-      view
+      info
     </button>
   );
 });
@@ -140,22 +209,18 @@ const DeleteButton = React.memo(function PrintButton({item, deleteItem}) {
   return <button onClick={() => deleteItem(item)}>delete</button>;
 });
 const DownloadButton = React.memo(function PrintButton({item}) {
-  return (
-    <button
-      onClick={() =>
-        downloadBlob(
-          new Blob([new Uint8Array(item.message)]),
-          item.name + (item.name.toLowerCase().endsWith('.syx') ? '' : '.syx')
-        )
-      }
-    >
-      download
-    </button>
-  );
+  return <button onClick={() => downloadItem(item)}>download</button>;
 });
 
 function addToSysexMessages(prev, newItem) {
   return uniqueBy((prev ?? []).concat(newItem), (item) => item.hash);
+}
+
+function initSysexMessagesReceived(name, messages = []) {
+  return {
+    name,
+    messages,
+  };
 }
 
 function App() {
@@ -163,13 +228,40 @@ function App() {
   const [midiOut, setMidiOut] = useLocalStorage('outPort', null);
   const [autoSend, setAutoSend] = useLocalStorage('autoSend', true);
   const [errorMessage, setErrorMessageState] = useState(null);
+  const [statusMessages, setStatusMessagesState] = useState([]);
   const [modalContent, setModalContent] = useState(null);
+  const [sysexMessagesReceived, setSysexMessagesReceived] = useState(null);
+
+  function updateSysexMessagesReceivedList(cb) {
+    setSysexMessagesReceived((s) => ({...s, messages: cb(s.messages)}));
+  }
+
+  function messagesToLibraryFile(messagesReceived) {
+    return makeItem({
+      message: concatTypedArrays(
+        Uint8Array,
+        messagesReceived.messages.map((m) => m.message)
+      ),
+      name: messagesReceived.name,
+    });
+  }
+
+  function storeMessages(messagesReceived) {
+    const item = messagesToLibraryFile(messagesReceived);
+    setSysexMessages((s) => addToSysexMessages(s, item));
+    return item;
+  }
   const [
     sysexMessagesFromStorage,
     setSysexMessages,
     clearSysexMessages,
   ] = useLocalForage('sysexMessages', []);
-  const sysexMessages = sysexMessagesFromStorage ?? [];
+  const sysexMessages = useMemo(() => sysexMessagesFromStorage ?? [], [
+    sysexMessagesFromStorage,
+  ]);
+  const setStatusMessage = useCallback((msg) => {
+    setStatusMessagesState((s) => s.concat({msg, id: uniqueID()}));
+  }, []);
   const setErrorMessage = useCallback((msg) => {
     if (msg) console.error(msg);
     setErrorMessageState(msg);
@@ -179,11 +271,46 @@ function App() {
       try {
         setErrorMessage(null);
         midiOut.port.send(new Uint8Array(buf));
+        return true;
       } catch (err) {
         setErrorMessage(err.toString());
       }
     } else {
       setErrorMessage('no midi out selected');
+    }
+    return false;
+  };
+
+  const sendItem = (item) => {
+    if (item.message[0] !== 0xf0) {
+      setErrorMessage('not a valid sysex file');
+      return false;
+    }
+
+    const messages = splitToSysExMessages(item.message);
+
+    if (messages.length === 1) {
+      if (sendMidi(item.message)) {
+        setStatusMessage(`Sent "${item.name}" to ${midiOut?.port?.name}`);
+      }
+    } else {
+      let messageIdx = 0;
+      let error = false;
+      while (messageIdx < messages.length) {
+        if (!sendMidi(messages[messageIdx])) {
+          error = true;
+          break;
+        }
+      }
+      if (!error) {
+        setStatusMessage(
+          `Sent "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages})`
+        );
+      } else {
+        setStatusMessage(
+          `Failed to send "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages})`
+        );
+      }
     }
   };
 
@@ -191,27 +318,55 @@ function App() {
     setSysexMessages((s) => s.filter((item) => item !== itemToDelete));
   }
 
+  const updateItem = useCallback(
+    function updateItem(itemToUpdate) {
+      setSysexMessages((s) =>
+        s.map((item) => (item.hash === itemToUpdate.hash ? itemToUpdate : item))
+      );
+    },
+    [setSysexMessages]
+  );
+
+  useEffect(() => {
+    if (!midiIn && !midiOut) {
+      setStatusMessage('Select a midi in or out port to get started');
+      setErrorMessage(null);
+    }
+  }, [midiIn, midiOut, setErrorMessage, setStatusMessage]);
+
   useEffect(() => {
     if (!midiIn?.port) return;
     midiIn.port.onmidimessage = (event) => {
       if (event.data[0] === 0xf0) {
-        setSysexMessages((s) =>
-          addToSysexMessages(
-            s,
-            makeItem({
-              message: event.data,
-              name: `Received on ${midiIn.port.name}`,
-            })
-          )
+        setStatusMessage(
+          `Received ${event.data.length} byte message from ${midiIn.port.name}`
         );
+        setSysexMessagesReceived((s) => {
+          const newMsg = {
+            name:
+              parseSysexMessage(event.data)?.type ??
+              `Dumped from ${midiIn.port.name}`,
+            message: event.data,
+            source: midiIn.port.name,
+          };
+          return s
+            ? {...s, messages: s.messages.concat(newMsg)}
+            : initSysexMessagesReceived(newMsg.name, [newMsg]);
+        });
       }
     };
-
     return () => {
       midiIn.port.onmidimessage = null;
     };
-  }, [midiIn, midiIn?.port, setSysexMessages]);
+  }, [midiIn, midiIn?.port, setSysexMessages, setStatusMessage]);
 
+  const tableItems = useMemo(
+    () =>
+      sysexMessages
+        .slice()
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)),
+    [sysexMessages]
+  );
   return (
     <div className="App">
       <div style={{margin: 16}}>
@@ -235,54 +390,208 @@ function App() {
             sysex
           />
         </div>
-        <div style={{display: 'inline-block', padding: '0 4px'}}>
-          <Checkbox
-            label="automatically send dropped files to device"
-            checked={autoSend}
-            onChange={() => setAutoSend((s) => !s)}
-          />
-        </div>
       </div>
       {errorMessage && (
-        <div style={{backgroundColor: 'red', margin: 16}}>{errorMessage}</div>
+        <div
+          style={{backgroundColor: 'red', color: 'white', padding: 16}}
+          onClick={() => setErrorMessageState(null)}
+        >
+          {errorMessage}
+        </div>
       )}
-      <FileDropzone
-        onFile={(file, buf) => {
-          console.log('file', file);
-          if (autoSend) {
-            sendMidi(buf);
-          }
-          setSysexMessages((s) =>
-            addToSysexMessages(
-              s,
-              makeItem({
-                message: new Uint8Array(buf),
+      <div className="App_columns">
+        <div
+          className="App_column_outer"
+          style={{
+            margin: 16,
+          }}
+        >
+          <h2>Send</h2>
+          <div style={{paddingBottom: 8}}>
+            <Checkbox
+              label="automatically send dragged & dropped files to device"
+              checked={autoSend}
+              onChange={() => setAutoSend((s) => !s)}
+            />
+          </div>
+          <FileDropzone
+            className="App_column_inner"
+            autoSend={autoSend}
+            onFile={(file, arrayBuffer) => {
+              const buf = new Uint8Array(arrayBuffer);
+              if (buf[0] !== 0xf0) {
+                setErrorMessage(
+                  `"${file.name} is not a valid sysex message file"`
+                );
+                return;
+              }
+              const item = makeItem({
+                message: buf,
                 name: file.name,
-              })
-            )
-          );
+              });
+              if (autoSend) {
+                sendItem(item);
+              }
+              setSysexMessages((s) => addToSysexMessages(s, item));
+            }}
+            onStatus={setErrorMessage}
+          />
+        </div>
+        <div
+          className="App_column_outer"
+          style={{
+            margin: 16,
+          }}
+        >
+          <h2>Receive</h2>
+          <div
+            className="App_column_inner"
+            style={{
+              border: 'solid 1px black',
+            }}
+          >
+            <div>
+              {sysexMessagesReceived?.messages.length ?? 0} messages received
+              {(sysexMessagesReceived?.messages.length ?? 0) > 0 &&
+                ` from ${sysexMessagesReceived?.messages[0].source}`}
+            </div>
+            <div>
+              {sysexMessagesReceived?.messages.length > 0 && (
+                <>
+                  <div className="App_receive_group_filename">
+                    Group filename:{' '}
+                    <EditableText
+                      value={sysexMessagesReceived.name}
+                      size={40}
+                      onChange={(updatedName) =>
+                        setSysexMessagesReceived((s) => ({
+                          ...s,
+                          name: updatedName,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="App_receive_group_actions">
+                    All messages:{' '}
+                    <button
+                      onClick={() => {
+                        storeMessages(sysexMessagesReceived);
+                      }}
+                    >
+                      store as group
+                    </button>
+                    <button
+                      onClick={() => {
+                        const item = messagesToLibraryFile(
+                          sysexMessagesReceived
+                        );
+                        downloadItem(item);
+                      }}
+                    >
+                      download
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSysexMessagesReceived(null);
+                      }}
+                    >
+                      discard all
+                    </button>
+                  </div>
+                  <div style={{overflowY: 'auto', height: 216}}>
+                    <Table
+                      items={sysexMessagesReceived?.messages}
+                      headings={['#', 'Filename', 'Bytes', 'Actions']}
+                      layout={[30, 'auto', 65, 'auto']}
+                      rowRenderer={(item, i) => [
+                        `${i + 1}`,
+                        <EditableText
+                          className="App_receive_name"
+                          value={item.name}
+                          onChange={(updatedName) =>
+                            updateSysexMessagesReceivedList((s) =>
+                              s.map((otherItem) =>
+                                otherItem === item
+                                  ? {...item, name: updatedName}
+                                  : otherItem
+                              )
+                            )
+                          }
+                        />,
+                        `${item.message.length}B`,
+                        <div className="App_table_actions App_receive_group_actions">
+                          <button
+                            onClick={() => {
+                              storeMessages({
+                                name: item.name,
+                                messages: [item],
+                              });
+                            }}
+                          >
+                            store in library
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadItem(item);
+                            }}
+                          >
+                            download
+                          </button>
+                          <button
+                            onClick={() => {
+                              updateSysexMessagesReceivedList((s) =>
+                                s.filter((otherItem) => item !== otherItem)
+                              );
+                            }}
+                          >
+                            discard
+                          </button>
+                        </div>,
+                      ]}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          margin: 16,
         }}
-        onStatus={setErrorMessage}
-      />
+      >
+        <h2>Info</h2>
+        <div
+          style={{
+            border: 'solid 1px black',
+            height: 200,
+            padding: 12,
+            overflowY: 'scroll',
+          }}
+        >
+          <LogView items={statusMessages.slice().sort((a, b) => b.id - a.id)} />
+        </div>
+      </div>
       <div style={{margin: 16}}>
-        {sysexMessages.length ? (
+        <h2>Library</h2>
+        {tableItems.length ? (
           <Table
-            items={sysexMessages
-              .slice()
-              .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))}
-            headings={['Name', 'Manufacturer', 'Bytes', 'Added', 'Actions']}
-            layout={['auto', 200, 100, 200, 260]}
+            items={tableItems}
+            headings={['Name', 'Type', 'Msgs', 'Bytes', 'Added', 'Actions']}
+            layout={['auto', 180, 50, 100, 180, 280]}
             rowRenderer={(item) => [
-              item.name,
-              getSysexManufacturer(item.message),
-              item.message.length,
+              <ItemName item={item} updateItem={updateItem} />,
+              item.type,
+              item.messagesCount,
+              `${item.message.length}B`,
               item.timestamp ? getTimestampString(item.timestamp) : 'unknown',
-              <>
-                <SendButton item={item} sendMidi={sendMidi} />
+              <div className="App_table_actions">
+                <SendButton item={item} sendItem={sendItem} />
                 <DownloadButton item={item} />
-                <ViewButton item={item} setModalContent={setModalContent} />
+                <InfoButton item={item} setModalContent={setModalContent} />
                 <DeleteButton item={item} deleteItem={deleteItem} />
-              </>,
+              </div>,
             ]}
           />
         ) : (

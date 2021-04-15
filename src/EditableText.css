@@ -1,0 +1,12 @@
+.EditableText_view {
+  border: dashed 1px #aaa;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  height: 18px;
+  margin: 1px;
+}
+.EditableText_view:hover {
+  border: solid 1px #aaa;
+  background: #ffa;
+}

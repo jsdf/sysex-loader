@@ -1,37 +1,68 @@
-.App {
+h2 {
+  margin-top: 0;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.App_table_actions {
+  display: flex;
+}
+.App_table_action_item {
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.App_columns {
+  display: flex;
+  height: 400px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.App_column_outer {
+  width: 50%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+}
+.App_column_inner {
+  flex: 1;
+  padding: 8px;
+  height: 300px;
+}
+.App_receive_group_actions,
+.App_receive_group_filename {
+  word-break: normal;
+  margin: 8px 0;
+}
+.App_receive_group_actions button {
+  margin: 0 2px;
 }
 
-.App-link {
-  color: #61dafb;
+.App_receive_actions {
+  word-break: normal;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.App_receive_name {
+  word-break: normal;
+}
+
+.App_libary_table.Table_col_1 {
+  width: 180px; /*type*/
+}
+.App_libary_table.Table_col_2 {
+  width: 50px; /*msgs*/
+}
+
+.App_libary_table.Table_col_3 {
+  width: 80px; /*bytes*/
+}
+
+.App_libary_table.Table_col_4 {
+  width: 180px; /*added*/
+}
+.App_libary_table.Table_col_5 {
+  width: 280px; /*actions*/
+}
+@media only screen and (max-width: 1024px) {
+  .App_columns {
+    display: block;
+    height: initial;
   }
-  to {
-    transform: rotate(360deg);
+  .App_column_outer {
+    width: initial;
   }
 }
