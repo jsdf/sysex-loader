@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.css": "/sysex-loader/static/css/main.4554dfa6.chunk.css",
-    "main.js": "/sysex-loader/static/js/main.233d446e.chunk.js",
-    "main.js.map": "/sysex-loader/static/js/main.233d446e.chunk.js.map",
+    "main.css": "/sysex-loader/static/css/main.12dbc93e.chunk.css",
+    "main.js": "/sysex-loader/static/js/main.b5fb0296.chunk.js",
+    "main.js.map": "/sysex-loader/static/js/main.b5fb0296.chunk.js.map",
     "runtime-main.js": "/sysex-loader/static/js/runtime-main.69fbcb83.js",
     "runtime-main.js.map": "/sysex-loader/static/js/runtime-main.69fbcb83.js.map",
     "static/css/2.679831fc.chunk.css": "/sysex-loader/static/css/2.679831fc.chunk.css",
@@ -12,14 +12,14 @@
     "static/js/3.d677326e.chunk.js.map": "/sysex-loader/static/js/3.d677326e.chunk.js.map",
     "index.html": "/sysex-loader/index.html",
     "static/css/2.679831fc.chunk.css.map": "/sysex-loader/static/css/2.679831fc.chunk.css.map",
-    "static/css/main.4554dfa6.chunk.css.map": "/sysex-loader/static/css/main.4554dfa6.chunk.css.map",
+    "static/css/main.12dbc93e.chunk.css.map": "/sysex-loader/static/css/main.12dbc93e.chunk.css.map",
     "static/js/2.258e4ee2.chunk.js.LICENSE.txt": "/sysex-loader/static/js/2.258e4ee2.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.69fbcb83.js",
     "static/css/2.679831fc.chunk.css",
     "static/js/2.258e4ee2.chunk.js",
-    "static/css/main.4554dfa6.chunk.css",
-    "static/js/main.233d446e.chunk.js"
+    "static/css/main.12dbc93e.chunk.css",
+    "static/js/main.b5fb0296.chunk.js"
   ]
 }
