@@ -2,6 +2,54 @@ h2 {
   margin-top: 0;
 }
 
+button {
+  background: white;
+  color: #334;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.dark-mode button {
+  /*background: #222;*/
+  background: #6ec5ba;
+  /*color: #eee;*/
+  color: #000;
+}
+
+/*dark mode*/
+.dark-mode body {
+  background: #333;
+  color: white;
+}
+
+.dark-mode label {
+  color: #bbb;
+}
+
+.dark-mode label {
+  color: #bbb;
+}
+label {
+  color: #222;
+  font-size: 12px;
+}
+
+select {
+  background: white;
+  color: #334;
+  height: 20px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.dark-mode select {
+  background: #222;
+  color: #eee;
+  height: 20px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
 .App_table_actions {
   display: flex;
 }

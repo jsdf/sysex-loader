@@ -6,12 +6,18 @@
 
   word-break: break-all;
 }
+.dark-mode .Table {
+  background-color: #222;
+}
 .Table thead th {
   padding: 2px 4px;
 }
 
 .Table_odd {
   background-color: #ccc;
+}
+.dark-mode .Table_odd {
+  background-color: #333;
 }
 .Table td {
   padding: 2px 4px;

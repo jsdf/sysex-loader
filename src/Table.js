@@ -10,7 +10,10 @@ export default function Table({items, headings, layout, rowRenderer}) {
               <th
                 key={i}
                 className={`Table_col_${i}`}
-                style={{width: typeof layout[i] == 'number' ? layout[i] : null}}
+                style={{
+                  width:
+                    layout && typeof layout[i] == 'number' ? layout[i] : null,
+                }}
               >
                 {heading}
               </th>
@@ -24,7 +27,10 @@ export default function Table({items, headings, layout, rowRenderer}) {
             {rowRenderer(item, i).map((cell, k) => (
               <td
                 className={`${i % 2 === 0 ? 'Table_odd' : null} Table_col_${k}`}
-                style={{width: typeof layout[k] == 'number' ? layout[k] : null}}
+                style={{
+                  width:
+                    layout && typeof layout[k] == 'number' ? layout[k] : null,
+                }}
                 key={k}
               >
                 {cell}

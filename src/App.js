@@ -223,6 +223,31 @@ function initSysexMessagesReceived(name, messages = []) {
   };
 }
 
+function Theme() {
+  const [darkMode, setDarkMode] = useLocalStorage('darkMode', true);
+
+  React.useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
+
+  return (
+    <div style={{position: 'absolute', top: 0, right: 0}}>
+      <label>
+        dark mode:{' '}
+        <input
+          type="checkbox"
+          checked={darkMode}
+          onChange={() => setDarkMode((s) => !s)}
+        />
+      </label>
+    </div>
+  );
+}
+
 function App() {
   const [midiIn, setMidiIn] = useLocalStorage('inPort', null);
   const [midiOut, setMidiOut] = useLocalStorage('outPort', null);
@@ -431,6 +456,8 @@ function App() {
               });
               if (autoSend) {
                 sendItem(item);
+              } else {
+                setStatusMessage(`Added "${item.name}" to library`);
               }
               setSysexMessages((s) => addToSysexMessages(s, item));
             }}
@@ -578,8 +605,8 @@ function App() {
         {tableItems.length ? (
           <Table
             items={tableItems}
+            className="App_library_table"
             headings={['Name', 'Type', 'Msgs', 'Bytes', 'Added', 'Actions']}
-            layout={['auto', 180, 50, 100, 180, 280]}
             rowRenderer={(item) => [
               <ItemName item={item} updateItem={updateItem} />,
               item.type,
@@ -626,6 +653,7 @@ function App() {
           {modalContent?.body}
         </Modal>
       )}
+      <Theme />
     </div>
   );
 }
