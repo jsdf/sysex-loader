@@ -273,15 +273,15 @@ function App() {
 
   function storeMessages(messagesReceived) {
     const item = messagesToLibraryFile(messagesReceived);
-    setSysexMessages((s) => addToSysexMessages(s, item));
+    setLibrarySysexMessages((s) => addToSysexMessages(s, item));
     return item;
   }
   const [
     sysexMessagesFromStorage,
-    setSysexMessages,
-    clearSysexMessages,
+    setLibrarySysexMessages,
+    clearLibrarySysexMessages,
   ] = useLocalForage('sysexMessages', []);
-  const sysexMessages = useMemo(() => sysexMessagesFromStorage ?? [], [
+  const librarySysexMessages = useMemo(() => sysexMessagesFromStorage ?? [], [
     sysexMessagesFromStorage,
   ]);
   const setStatusMessage = useCallback((msg) => {
@@ -340,16 +340,16 @@ function App() {
   };
 
   function deleteItem(itemToDelete) {
-    setSysexMessages((s) => s.filter((item) => item !== itemToDelete));
+    setLibrarySysexMessages((s) => s.filter((item) => item !== itemToDelete));
   }
 
   const updateItem = useCallback(
     function updateItem(itemToUpdate) {
-      setSysexMessages((s) =>
+      setLibrarySysexMessages((s) =>
         s.map((item) => (item.hash === itemToUpdate.hash ? itemToUpdate : item))
       );
     },
-    [setSysexMessages]
+    [setLibrarySysexMessages]
   );
 
   useEffect(() => {
@@ -383,14 +383,14 @@ function App() {
     return () => {
       midiIn.port.onmidimessage = null;
     };
-  }, [midiIn, midiIn?.port, setSysexMessages, setStatusMessage]);
+  }, [midiIn, midiIn?.port, setLibrarySysexMessages, setStatusMessage]);
 
   const tableItems = useMemo(
     () =>
-      sysexMessages
+      librarySysexMessages
         .slice()
         .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)),
-    [sysexMessages]
+    [librarySysexMessages]
   );
   return (
     <div className="App">
@@ -419,10 +419,7 @@ function App() {
         </div>
       </div>
       {errorMessage && (
-        <div
-          style={{backgroundColor: 'red', color: 'white', padding: 16}}
-          onClick={() => setErrorMessageState(null)}
-        >
+        <div className="App_error" onClick={() => setErrorMessageState(null)}>
           {errorMessage}
         </div>
       )}
@@ -461,7 +458,7 @@ function App() {
               } else {
                 setStatusMessage(`Added "${item.name}" to library`);
               }
-              setSysexMessages((s) => addToSysexMessages(s, item));
+              setLibrarySysexMessages((s) => addToSysexMessages(s, item));
             }}
             onStatus={setErrorMessage}
           />
@@ -622,7 +619,7 @@ function App() {
           'SysEx messages you upload or download will be listed here'
         )}
       </div>
-      {Boolean(sysexMessages.length) && (
+      {Boolean(librarySysexMessages.length) && (
         <div style={{margin: 16}}>
           <button
             onClick={() => {
@@ -631,7 +628,7 @@ function App() {
                   "Are you sure? This will delete everything you've uploaded or downloaded from this app"
                 )
               ) {
-                clearSysexMessages();
+                clearLibrarySysexMessages();
               }
             }}
           >

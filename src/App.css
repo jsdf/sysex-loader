@@ -169,3 +169,12 @@ select {
 .dark-mode .FileDropzone {
   border: dashed 3px #d66257;
 }
+.App_error {
+  background-color: red;
+  color: white;
+  padding: 16px;
+}
+
+.dark-mode .App_error {
+  background-color: #d66257;
+}
