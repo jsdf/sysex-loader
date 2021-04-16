@@ -3,6 +3,7 @@ import {useDropzone} from 'react-dropzone';
 import Modal from 'react-modal';
 
 import './App.css';
+import Logo from './Logo';
 import MidiDeviceSelector from './MidiDeviceSelector';
 import useLocalStorage from './useLocalStorage';
 import useLocalForage from './useLocalForage';
@@ -125,11 +126,10 @@ function FileDropzone({onFile, onStatus, className, autoSend}) {
 
   return (
     <div
-      className={className}
+      className={`${className} FileDropzone`}
       {...getRootProps()}
       style={{
         textAlign: 'center',
-        border: 'dashed 3px #ccc',
         borderRadius: 30,
         cursor: 'pointer',
       }}
@@ -140,7 +140,7 @@ function FileDropzone({onFile, onStatus, className, autoSend}) {
       </div>
       <input
         {...inputProps}
-        style={{...inputProps.style, display: 'block', margin: '32px auto'}}
+        style={{...inputProps.style, margin: '32px auto'}}
       />
     </div>
   );
@@ -235,7 +235,7 @@ function Theme() {
   }, [darkMode]);
 
   return (
-    <div style={{position: 'absolute', top: 0, right: 0}}>
+    <div style={{position: 'absolute', top: 8, right: 16}}>
       <label>
         dark mode:{' '}
         <input
@@ -394,6 +394,8 @@ function App() {
   );
   return (
     <div className="App">
+      <Logo />
+      <h1 style={{padding: '0 16px'}}>Digital SysEx Message Loader</h1>
       <div style={{margin: 16}}>
         <div style={{display: 'inline-block', padding: '0 4px'}}>
           <MidiDeviceSelector
@@ -471,12 +473,7 @@ function App() {
           }}
         >
           <h2>Receive</h2>
-          <div
-            className="App_column_inner"
-            style={{
-              border: 'solid 1px black',
-            }}
-          >
+          <div className="App_column_inner border-thin">
             <div>
               {sysexMessagesReceived?.messages.length ?? 0} messages received
               {(sysexMessagesReceived?.messages.length ?? 0) > 0 &&
@@ -590,8 +587,8 @@ function App() {
       >
         <h2>Info</h2>
         <div
+          className="border-thin"
           style={{
-            border: 'solid 1px black',
             height: 200,
             padding: 12,
             overflowY: 'scroll',
@@ -647,6 +644,8 @@ function App() {
           isOpen={Boolean(modalContent)}
           onRequestClose={() => setModalContent(null)}
           contentLabel={modalContent?.title}
+          className="Modal"
+          overlayClassName="Modal_overlay"
         >
           <h2>{modalContent?.title}</h2>
           <button onClick={() => setModalContent(null)}>close</button>

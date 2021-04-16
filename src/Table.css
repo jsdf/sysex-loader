@@ -11,6 +11,8 @@
 }
 .Table thead th {
   padding: 2px 4px;
+  text-transform: uppercase;
+  font-weight: normal;
 }
 
 .Table_odd {

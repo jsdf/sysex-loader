@@ -10,3 +10,7 @@
   border: solid 1px #aaa;
   background: #ffa;
 }
+.dark-mode .EditableText_view:hover {
+  border: solid 1px #9d7150;
+  background: #9d7150;
+}

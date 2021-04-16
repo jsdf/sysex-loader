@@ -1,0 +1,12 @@
+.Logo .whitestroke {
+  stroke: #000;
+}
+.Logo .whitefill {
+  fill: #000;
+}
+.dark-mode .Logo .whitestroke {
+  stroke: #fff;
+}
+.dark-mode .Logo .whitefill {
+  fill: #fff;
+}
