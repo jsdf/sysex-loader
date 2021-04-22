@@ -16,6 +16,7 @@ import uniqueID from './uniqueID';
 import LogView from './LogView';
 import EditableText from './EditableText';
 import {parseSysexMessage, getSysexManufacturer} from './sysex';
+import Searchbox from './Searchbox';
 
 function concatTypedArrays(ArrayType, arrays) {
   let totalLength = 0;
@@ -135,7 +136,7 @@ function FileDropzone({onFile, onStatus, className, autoSend}) {
       }}
     >
       <div style={{margin: '32px auto', fontSize: 24, maxWidth: 360}}>
-        Drag & drop some .syx files here (or click here to select files) to{' '}
+        Drag & drop some .syx files here (or click here) to{' '}
         {autoSend ? 'send them to your device' : 'add them to the library'}.
       </div>
       <input
@@ -256,6 +257,8 @@ function App() {
   const [statusMessages, setStatusMessagesState] = useState([]);
   const [modalContent, setModalContent] = useState(null);
   const [sysexMessagesReceived, setSysexMessagesReceived] = useState(null);
+  const [libraryFilter, setLibraryFilter] = useState('');
+  const [searchContent, setSearchContent] = useState(true);
 
   function updateSysexMessagesReceivedList(cb) {
     setSysexMessagesReceived((s) => ({...s, messages: cb(s.messages)}));
@@ -329,11 +332,11 @@ function App() {
       }
       if (!error) {
         setStatusMessage(
-          `Sent "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages})`
+          `Sent "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages.length})`
         );
       } else {
         setStatusMessage(
-          `Failed to send "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages})`
+          `Failed to send "${item.name}" to ${midiOut?.port?.name} (messages sent: ${messageIdx} of ${messages.length})`
         );
       }
     }
@@ -385,13 +388,21 @@ function App() {
     };
   }, [midiIn, midiIn?.port, setLibrarySysexMessages, setStatusMessage]);
 
-  const tableItems = useMemo(
-    () =>
-      librarySysexMessages
-        .slice()
-        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)),
-    [librarySysexMessages]
-  );
+  const tableItems = useMemo(() => {
+    const libraryFilterClean = libraryFilter.trim().toLowerCase();
+    return librarySysexMessages
+      .slice()
+      .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+      .filter((item) => {
+        if (libraryFilterClean.length === 0) {
+          return item;
+        }
+        return new TextDecoder()
+          .decode(item.message)
+          .toLowerCase()
+          .includes(libraryFilterClean);
+      });
+  }, [librarySysexMessages, libraryFilter]);
   return (
     <div className="App">
       <Logo />
@@ -586,7 +597,7 @@ function App() {
         <div
           className="border-thin"
           style={{
-            height: 200,
+            height: 100,
             padding: 12,
             overflowY: 'scroll',
           }}
@@ -594,48 +605,70 @@ function App() {
           <LogView items={statusMessages.slice().sort((a, b) => b.id - a.id)} />
         </div>
       </div>
-      <div style={{margin: 16}}>
+      <div style={{margin: 16}} div className="App_library">
         <h2>Library</h2>
-        {tableItems.length ? (
-          <Table
-            items={tableItems}
-            className="App_library_table"
-            headings={['Name', 'Type', 'Msgs', 'Bytes', 'Added', 'Actions']}
-            rowRenderer={(item) => [
-              <ItemName item={item} updateItem={updateItem} />,
-              item.type,
-              item.messagesCount,
-              `${item.message.length}B`,
-              item.timestamp ? getTimestampString(item.timestamp) : 'unknown',
-              <div className="App_table_actions">
-                <SendButton item={item} sendItem={sendItem} />
-                <DownloadButton item={item} />
-                <InfoButton item={item} setModalContent={setModalContent} />
-                <DeleteButton item={item} deleteItem={deleteItem} />
-              </div>,
-            ]}
-          />
+        {librarySysexMessages.length === 0 ? (
+          <div>SysEx messages you upload or download will be listed here</div>
         ) : (
-          'SysEx messages you upload or download will be listed here'
+          <div>
+            <Searchbox
+              placeholder={
+                searchContent ? 'search titles and content' : 'search titles'
+              }
+              size={30}
+              value={libraryFilter}
+              onChange={(value) => setLibraryFilter(value)}
+              onClear={() => setLibraryFilter('')}
+            />{' '}
+            <Checkbox
+              label="search in message content (e.g. patch names)"
+              checked={searchContent}
+              onChange={() => setSearchContent((s) => !s)}
+            />
+            {tableItems.length === 0 ? (
+              <div>No matches</div>
+            ) : (
+              <Table
+                items={tableItems}
+                className="App_library_table"
+                headings={['Name', 'Type', 'Msgs', 'Bytes', 'Added', 'Actions']}
+                rowRenderer={(item) => [
+                  <ItemName item={item} updateItem={updateItem} />,
+                  item.type,
+                  item.messagesCount,
+                  `${item.message.length}B`,
+                  item.timestamp
+                    ? getTimestampString(item.timestamp)
+                    : 'unknown',
+                  <div className="App_table_actions">
+                    <SendButton item={item} sendItem={sendItem} />
+                    <DownloadButton item={item} />
+                    <InfoButton item={item} setModalContent={setModalContent} />
+                    <DeleteButton item={item} deleteItem={deleteItem} />
+                  </div>,
+                ]}
+              />
+            )}
+          </div>
+        )}
+        {Boolean(librarySysexMessages.length) && (
+          <div style={{marginTop: 16}}>
+            <button
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Are you sure? This will delete everything you've uploaded or downloaded from this app"
+                  )
+                ) {
+                  clearLibrarySysexMessages();
+                }
+              }}
+            >
+              clear all history
+            </button>
+          </div>
         )}
       </div>
-      {Boolean(librarySysexMessages.length) && (
-        <div style={{margin: 16}}>
-          <button
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Are you sure? This will delete everything you've uploaded or downloaded from this app"
-                )
-              ) {
-                clearLibrarySysexMessages();
-              }
-            }}
-          >
-            clear all history
-          </button>
-        </div>
-      )}
       {modalContent && (
         <Modal
           isOpen={Boolean(modalContent)}

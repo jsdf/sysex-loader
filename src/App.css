@@ -42,12 +42,26 @@ label {
   color: #222;
 }
 
+input[type='text'] {
+  background: white;
+  color: #334;
+  height: 20px;
+  margin: 8px 0;
+}
+.dark-mode input[type='text'] {
+  background: #222;
+  color: #eee;
+}
 select {
   background: white;
   color: #334;
   height: 20px;
   margin-top: 10px;
   cursor: pointer;
+}
+.dark-mode select {
+  background: #222;
+  color: #eee;
 }
 
 .border-thin {
@@ -56,14 +70,6 @@ select {
 
 .dark-mode .border-thin {
   border: solid 1px #5592d9;
-}
-
-.dark-mode select {
-  background: #222;
-  color: #eee;
-  height: 20px;
-  margin-top: 10px;
-  cursor: pointer;
 }
 
 .App_table_actions {
@@ -104,6 +110,9 @@ select {
   word-break: normal;
 }
 
+.App_library {
+  min-height: 400px;
+}
 .App_libary_table.Table_col_1 {
   width: 180px; /*type*/
 }

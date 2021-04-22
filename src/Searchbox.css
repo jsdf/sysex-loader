@@ -1,0 +1,19 @@
+.Searchbox {
+  position: relative;
+  display: inline-block;
+}
+.Searchbox input {
+  height: 20px;
+}
+.Searchbox_clear {
+  position: absolute;
+  right: 0;
+  height: 20px;
+}
+button.Searchbox_clear {
+  color: #000;
+  background: transparent;
+}
+.dark-mode button.Searchbox_clear {
+  color: #fff;
+}
